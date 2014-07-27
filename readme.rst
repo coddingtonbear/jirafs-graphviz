@@ -13,12 +13,12 @@ Installation
 
 2. Enable for a ticket folder::
 
-    jirafs config --set plugins.graphviz on
+    jirafs plugins --enable=graphviz
 
 Note that you can globally enable this (or any) plugin by adding the
 ``--global`` flag to the above command::
 
-    jirafs config --global --set plugins.graphviz on
+    jirafs plugins --global --enable=graphviz
 
 Requirements
 ------------
