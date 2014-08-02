@@ -10,6 +10,9 @@ from jirafs.plugin import Plugin, PluginOperationError, PluginValidationError
 
 class Graphviz(Plugin):
     """ Converts .dot files into PNG images using Graphviz for JIRA."""
+    MIN_VERSION = '0.9.0'
+    MAX_VERSION = '1.99.99'
+
     INPUT_EXTENSIONS = ['dot']
     OUTPUT_EXTENSION = 'png'
 
