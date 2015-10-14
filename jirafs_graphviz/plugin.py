@@ -1,70 +1,43 @@
+import hashlib
 import os
-import shutil
 import subprocess
-import tempfile
-
-import six
 
 from jirafs.plugin import Plugin, PluginOperationError, PluginValidationError
 
 
-class Graphviz(Plugin):
-    """ Converts .dot files into PNG images using Graphviz for JIRA."""
-    MIN_VERSION = '0.9.0'
-    MAX_VERSION = '1.99.99'
-
+class GraphvizMixin(object):
     INPUT_EXTENSIONS = ['dot']
     OUTPUT_EXTENSION = 'png'
 
-    def alter_file_upload(self, info):
-        metadata = self.get_metadata()
+    def _get_command_args(self, input_filename, output_filename):
+        command = [
+            'dot',
+            '-T%s' % self.OUTPUT_EXTENSION,
+            input_filename,
+            '-o',
+            output_filename,
+        ]
 
-        filename, file_object = info
+        return command
 
-        basename, extension = os.path.splitext(filename)
-        if extension[1:] not in self.INPUT_EXTENSIONS:
-            return filename, file_object
-        new_filename = '.'.join([basename, self.OUTPUT_EXTENSION])
-
-        tempdir = tempfile.mkdtemp()
-        temp_file_path = os.path.join(
-            tempdir,
-            new_filename,
-        )
-
+    def _build_output(self, input_filename, output_filename):
         proc = subprocess.Popen(
-            [
-                'dot',
-                '-T%s' % self.OUTPUT_EXTENSION,
-                '-o',
-                temp_file_path,
-            ],
+            self._get_command_args(input_filename, output_filename),
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
-        stdout, stderr = proc.communicate(file_object.read())
+        stdout, stderr = proc.communicate()
 
         if proc.returncode:
             raise PluginOperationError(
                 "%s encountered an error while compiling from %s to %s: %s" % (
                     self.plugin_name,
-                    extension,
-                    self.OUTPUT_EXTENSION,
+                    input_filename,
+                    output_filename,
                     stderr,
                 )
             )
-
-        with open(temp_file_path, 'rb') as temp_output:
-            content = six.BytesIO(temp_output.read())
-        shutil.rmtree(tempdir)
-
-        filename_map = metadata.get('filename_map', {})
-        filename_map[new_filename] = filename
-        metadata['filename_map'] = filename_map
-        self.set_metadata(metadata)
-
-        return new_filename, content
 
     def validate(self):
         try:
@@ -82,3 +55,57 @@ class Graphviz(Plugin):
                     self.plugin_name,
                 )
             )
+
+
+class Graphviz(Plugin, GraphvizMixin):
+    """ Converts .dot files into PNG images using Graphviz for JIRA."""
+    MIN_VERSION = '0.9.0'
+    MAX_VERSION = '1.99.99'
+
+    def get_ignore_globs(self):
+        return ['*.dot']
+
+    def run_build_process(self):
+        plugin_meta = self.get_metadata()
+        transformation_cache = plugin_meta.get('transformation_cache', {})
+
+        filenames = os.listdir('.')
+
+        transformed = []
+        untransformed = []
+        for input_filename in filenames:
+            basename, extension = os.path.splitext(input_filename)
+            if extension.lstrip('.') not in self.INPUT_EXTENSIONS:
+                continue
+
+            output_filename = '.'.join([basename, self.OUTPUT_EXTENSION])
+            with open(input_filename, 'r') as inp:
+                data_hash = hashlib.sha256(inp.read()).hexdigest()
+
+            previously_transformed = (
+                transformation_cache.get(input_filename) == data_hash
+            )
+            file_exists = os.path.exists(output_filename)
+
+            if not (file_exists and previously_transformed):
+                transformed.append(input_filename)
+                self._build_output(input_filename, output_filename)
+
+                transformation_cache[input_filename] = data_hash
+            else:
+                untransformed.append(input_filename)
+
+        plugin_meta['transformation_cache'] = transformation_cache
+        self.set_metadata(plugin_meta)
+
+        lines = []
+        if transformed:
+            lines.append(
+                'Transformed: %s' % ', '.join(transformed),
+            )
+        if untransformed:
+            lines.append(
+                'Cached: %s' % ', '.join(untransformed),
+            )
+
+        return '\n'.join(lines)
