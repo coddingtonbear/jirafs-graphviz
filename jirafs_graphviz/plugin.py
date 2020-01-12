@@ -1,11 +1,14 @@
 import subprocess
 import tempfile
 
-from jirafs.plugin import ImageBlockElementMacroPlugin, PluginValidationError
+from jirafs.plugin import (
+    ImageMacroPlugin,
+    PluginValidationError,
+    PluginOperationError
+)
 
 
 class GraphvizMixin(object):
-    INPUT_EXTENSIONS = ['dot']
     OUTPUT_EXTENSION = 'png'
 
     def _get_command_args(self, input_filename, output_filename):
@@ -34,7 +37,7 @@ class GraphvizMixin(object):
                     self.plugin_name,
                     input_filename,
                     output_filename,
-                    stderr,
+                    stderr.decode('utf-8'),
                 )
             )
 
@@ -56,7 +59,7 @@ class GraphvizMixin(object):
             )
 
 
-class Graphviz(ImageBlockElementMacroPlugin, GraphvizMixin):
+class Graphviz(GraphvizMixin, ImageMacroPlugin):
     """ Converts .dot files into PNG images using Graphviz for JIRA."""
     MIN_VERSION = '2.0.0'
     MAX_VERSION = '3.0.0'
