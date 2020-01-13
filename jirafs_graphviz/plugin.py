@@ -6,15 +6,20 @@ from jirafs.plugin import (
     PluginValidationError,
     PluginOperationError
 )
+from jirafs.types import JirafsMacroAttributes
 
 
 class GraphvizMixin(object):
-    OUTPUT_EXTENSION = 'png'
-
-    def _get_command_args(self, input_filename, output_filename):
+    def _get_command_args(
+        self,
+        input_filename,
+        output_filename,
+        command: str = 'dot',
+        format: str = 'png'
+    ):
         command = [
-            'dot',
-            '-T%s' % self.OUTPUT_EXTENSION,
+            command,
+            '-T%s' % format,
             input_filename,
             '-o',
             output_filename,
@@ -22,9 +27,20 @@ class GraphvizMixin(object):
 
         return command
 
-    def _build_output(self, input_filename, output_filename):
+    def _build_output(
+        self,
+        input_filename: str,
+        output_filename: str,
+        command: str = 'dot',
+        format: str = 'png',
+    ):
         proc = subprocess.Popen(
-            self._get_command_args(input_filename, output_filename),
+            self._get_command_args(
+                input_filename,
+                output_filename,
+                command=command,
+                format=format,
+            ),
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
@@ -34,7 +50,7 @@ class GraphvizMixin(object):
         if proc.returncode:
             raise PluginOperationError(
                 "%s encountered an error while compiling from %s to %s: %s" % (
-                    self.plugin_name,
+                    self.entrypoint_name,
                     input_filename,
                     output_filename,
                     stderr.decode('utf-8'),
@@ -63,15 +79,23 @@ class Graphviz(GraphvizMixin, ImageMacroPlugin):
     """ Converts .dot files into PNG images using Graphviz for JIRA."""
     MIN_VERSION = '2.0.0'
     MAX_VERSION = '3.0.0'
-    COMPONENT_NAME = 'graphviz'
+    TAG_NAME = 'graphviz'
 
-    def get_extension_and_image_data(self, data, **attrs):
+    def get_extension_and_image_data(self, data: str, attrs: JirafsMacroAttributes):
+        command = attrs.get('command', 'dot')
+        format = attrs.get('format', 'png')
+
         with tempfile.NamedTemporaryFile('w') as inf:
             inf.write(data)
             inf.flush()
 
             with tempfile.NamedTemporaryFile('wb+') as outf:
-                self._build_output(inf.name, outf.name)
+                self._build_output(
+                    inf.name,
+                    outf.name,
+                    command=command,
+                    format=format,
+                )
 
                 outf.seek(0)
-                return "png", outf.read()
+                return format, outf.read()
