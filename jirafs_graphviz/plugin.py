@@ -70,7 +70,7 @@ class GraphvizMixin(object):
         except (subprocess.CalledProcessError, IOError, OSError):
             raise PluginValidationError(
                 "%s requires graphviz (dot) to be installed." % (
-                    self.plugin_name,
+                    self.entrypoint_name,
                 )
             )
 
