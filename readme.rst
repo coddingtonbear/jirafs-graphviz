@@ -1,11 +1,16 @@
-Jirafs-Graphviz
-===============
+Jirafs graphviz Macro
+=====================
 
-Automatically converts graphviz (dot) you enter into your Jira comment
-or description before uploading to JIRA.
+This Jirafs plugin adds a macro allowing you to easily embed graphs generated with Graphviz's easy-to-use markup.
 
-Use
----
+.. image:: http://coddingtonbear-public.s3.amazonaws.com/github/jirafs-graphviz/demo_v1.gif
+
+and the comment posted will appear in Jira as:
+
+.. image:: http://coddingtonbear-public.s3.amazonaws.com/github/jirafs-graphviz/demo_v1_jira.png
+
+Quickstart
+----------
 
 You can enter a digraph into your document by using the ``graphviz`` macro::
 
@@ -18,8 +23,6 @@ You can enter a digraph into your document by using the ``graphviz`` macro::
 or::
 
     <jirafs:graphviz src="name-of-digraph-file.dot" />
-
-Upon submission to Jira, a file will automatically be generated, and your markup will be replaced with an embedded image showing your rendered graph.
 
 Options
 -------
